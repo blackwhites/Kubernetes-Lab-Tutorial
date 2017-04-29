@@ -1,0 +1,64 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    run: mariadb
+  name: mariadb
+  namespace:
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: mariadb
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        run: mariadb
+    spec:
+      containers:
+      - image: bitnami/mariadb:latest
+        imagePullPolicy: Always
+        name: mariadb
+        ports:
+        - containerPort: 3306
+          protocol: TCP
+        env:
+        - name: MARIADB_ROOT_PASSWORD
+          value: bitnami123
+        - name: MARIADB_DATABASE
+          value: workpress
+        - name: MARIADB_USER
+          value: bitnami
+        - name: MARIADB_PASSWORD
+          value: bitnami123
+        volumeMounts:
+        - name: mariadb-data
+          mountPath: /bitnami/mariadb
+
+      volumes:
+      - name: mariadb-data
+        emptyDir: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  labels:
+    run: mariadb
+spec:
+  ports:
+  - protocol: TCP
+    port: 3306
+    targetPort: 3306
+  selector:
+    run: mariadb

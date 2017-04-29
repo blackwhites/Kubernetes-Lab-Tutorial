@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multiple
+  labels:
+    run: nginx
+spec:
+
+  volumes:
+  - name: shared-data
+    emptyDir: {}
+
+  containers:
+  - name: nginx
+    image: nginx:latest
+    volumeMounts:
+    - name: shared-data
+      mountPath: /usr/share/nginx/html
+  - name: busybox
+    image: busybox:latest
+    volumeMounts:
+    - name: shared-data
+      mountPath: /pod-data
+    command: ["/bin/sh"]
+    args: ["-c", "echo Hello World! > /pod-data/index.html"]

@@ -1,0 +1,83 @@
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    run: blog
+  name: wordpress
+  namespace:
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: blog
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        run: blog
+    spec:
+      containers:
+      - image: bitnami/wordpress:latest
+        imagePullPolicy: Always
+        name: wordpress
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        - containerPort: 443
+          protocol: TCP
+        env:
+        - name: MARIADB_HOST
+          value: mariadb
+        - name: MARIADB_PORT
+          value: '3306'
+        - name: WORDPRESS_DATABASE_NAME
+          value: workpress
+        - name: WORDPRESS_DATABASE_USER
+          value: bitnami
+        - name: WORDPRESS_DATABASE_PASSWORD
+          value: bitnami123
+        - name: WORDPRESS_USERNAME
+          value: admin
+        - name: WORDPRESS_PASSWORD
+          value: password
+        volumeMounts:
+        - name: wordpress-data
+          mountPath: /bitnami/wordpress
+        - name: apache-data
+          mountPath: /bitnami/apache
+        - name: php-data
+          mountPath: /bitnami/php
+
+      volumes:
+      - name: wordpress-data
+        emptyDir: {}
+      - name: apache-data
+        emptyDir: {}
+      - name: php-data
+        emptyDir: {}
+
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  labels:
+    run: blog
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 31080
+  selector:
+    run: blog
+  type: NodePort
