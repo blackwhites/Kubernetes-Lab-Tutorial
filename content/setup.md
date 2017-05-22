@@ -64,13 +64,13 @@ To configure common options, edit the ``/etc/kubernetes/config`` configuration f
     # Comma separated list of nodes running etcd cluster
     KUBE_ETCD_SERVERS="--etcd_servers=http://kubem00:2379"
 
-Kubernetes uses certificates to authenticate API request. We need to generate certificates that can be used for authentication. Kubernetes provides ready made scripts for generating these certificates which can be found [here](https://github.com/kalise/Kubernetes-Lab-Tutorial/blob/master/utils/ca-cert.sh).
+Kubernetes uses certificates to authenticate API request. We need to generate certificates that can be used for authentication. Kubernetes provides ready made scripts for generating these certificates which can be found [here](https://github.com/kalise/Kubernetes-Lab-Tutorial/tree/master/utils/ca-cert.sh).
 
 Download this script, set right permissions and exec as follow
 
     MASTER_IP=10.10.10.80
     KUBE_SVC_IP=10.254.0.1
-    bash make-ca-cert.sh "${MASTER_IP}" "IP:${MASTER_IP},IP:${KUBE_SVC_IP},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local"
+    bash ca-cert.sh "${MASTER_IP}" "IP:${MASTER_IP},IP:${KUBE_SVC_IP},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local"
 
 This script will create certificates in ``/srv/kubernetes/`` directory
 
