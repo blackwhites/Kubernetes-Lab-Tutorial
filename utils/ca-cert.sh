@@ -110,9 +110,3 @@ cp -p pki/private/kubecfg.key "${cert_dir}/kubecfg.key"
 # Make server certs accessible to apiserver.
 chgrp $cert_group "${cert_dir}/server.key" "${cert_dir}/server.cert" "${cert_dir}/ca.crt"
 chmod 660 "${cert_dir}/server.key" "${cert_dir}/server.cert" "${cert_dir}/ca.crt"
-
-###### USAGE ######
-# MASTER_IP=10.10.10.80
-# KUBE_SVC_IP=10.254.0.1
-# bash make-ca-cert.sh "${MASTER_IP}" "IP:${MASTER_IP},IP:${KUBE_SVC_IP},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local"
-
