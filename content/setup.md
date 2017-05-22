@@ -40,9 +40,9 @@ Before launching and enabling the etcd service you need to define its configurat
     # [member]
     ETCD_NAME=default
     ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-    ETCD_LISTEN_CLIENT_URLS="http://10.10.10.80:2379"
+    ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
     # [cluster]
-    ETCD_ADVERTISE_CLIENT_URLS="http://10.10.10.80:2379"
+    ETCD_ADVERTISE_CLIENT_URLS="http://0.0.0.0:2379"
     # [logging]
     ETCD_DEBUG="true"
 
