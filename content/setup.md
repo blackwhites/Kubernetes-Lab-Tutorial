@@ -22,6 +22,12 @@ Make sure to enable DNS resolution for the above hostnames or set the ``/etc/hos
 
 For networking we are going to use **Flannel**, a simple overlay networking daemon for kubernetes. There are many networking solutions available out there. Flannel is very simple to setup and use. Flannel gives a dedicated subnet to each host for use with container runtimes. Details about Flannel are [here](https://github.com/coreos/flannel).
 
+Make sure IP forwarding kernel option is enabled
+
+    cat /etc/sysctl.conf
+      net.ipv4.ip_forward = 1
+    sysctl -p /etc/sysctl.conf
+
 Create default kubernetes reposistory on all the nodes:
 
     [virt7-docker-common-release]
