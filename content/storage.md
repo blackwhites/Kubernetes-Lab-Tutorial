@@ -154,9 +154,9 @@ A persistent volume can be mounted on a host in any way supported by the resourc
 
 The access modes are:
 
-  * **ReadWriteOnce**: the volume can be mounted as read-write by a single node
-  * **ReadOnlyMany**: the volume can be mounted read-only by many nodes
-  * **ReadWriteMany**: the volume can be mounted as read-write by many nodes
+  * **ReadWriteOnce**: the volume can be mounted as read-write by a single pod
+  * **ReadOnlyMany**: the volume can be mounted read-only by many pods
+  * **ReadWriteMany**: the volume can be mounted as read-write by many pods
 
 Claims and volumes use the same conventions when requesting storage with specific access modes. Pods use claims as volumes. For volumes which support multiple access modes, the user specifies which mode desired when using their claim as a volume in a pod.
 
