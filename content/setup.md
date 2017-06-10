@@ -13,10 +13,10 @@ Our initial cluster will be made of 1 Master node and 3 Workers nodes. All machi
 
 Here the hostnames:
 
-    Master kubem00 = 10.10.10.80/24
-    Worker kuben01 = 10.10.10.81/24
-    Worker kuben02 = 10.10.10.82/24
-    Worker kuben03 = 10.10.10.82/24
+    kubem00 10.10.10.80 (master)
+    kuben01 10.10.10.81 (worker)
+    kuben02 10.10.10.82 (worker)
+    kuben03 10.10.10.82 (worker)
 
 Make sure to enable DNS resolution for the above hostnames or set the ``/etc/hosts`` file on all the machines.
 
@@ -64,7 +64,7 @@ To configure common options, edit the ``/etc/kubernetes/config`` configuration f
     KUBE_LOGTOSTDERR="--logtostderr=true"
     KUBE_LOG_LEVEL="--v=0"
     # Should this cluster be allowed to run privileged docker containers
-    KUBE_ALLOW_PRIV="--allow-privileged=false"
+    KUBE_ALLOW_PRIV="--allow-privileged=true"
     # How the controller-manager, scheduler, and proxy find the apiserver
     KUBE_MASTER="--master=http://kubem00:8080"
     # Comma separated list of nodes running etcd cluster
@@ -177,6 +177,17 @@ Restart the docker service
 On all the worker nodes, install the Kubernetes components and flanneld
 
     yum -y install --enablerepo=virt7-docker-common-release kubernetes flannel
+
+To configure common options, edit the ``/etc/kubernetes/config`` configuration file
+
+    KUBE_LOGTOSTDERR="--logtostderr=true"
+    KUBE_LOG_LEVEL="--v=0"
+    # Should this cluster be allowed to run privileged docker containers
+    KUBE_ALLOW_PRIV="--allow-privileged=true"
+    # How the controller-manager, scheduler, and proxy find the apiserver
+    KUBE_MASTER="--master=http://kubem00:8080"
+    # Comma separated list of nodes running etcd cluster
+    #KUBE_ETCD_SERVERS="--etcd_servers=http://127.0.0.1:2379"
 
 ### Configure kubelet
 To configure the kubelet component, edit the ``/etc/kubernetes/kubelet`` configuration file
