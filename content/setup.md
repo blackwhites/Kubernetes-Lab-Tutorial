@@ -13,10 +13,10 @@ Our initial cluster will be made of 1 Master node and 3 Workers nodes. All machi
 
 Here the hostnames:
 
-    kubem00 10.10.10.80 (master)
-    kuben01 10.10.10.81 (worker)
-    kuben02 10.10.10.82 (worker)
-    kuben03 10.10.10.82 (worker)
+    kube00 10.10.10.80 (master)
+    kube01 10.10.10.81 (worker)
+    kube02 10.10.10.82 (worker)
+    kube03 10.10.10.82 (worker)
 
 Make sure to enable DNS resolution for the above hostnames or set the ``/etc/hosts`` file on all the machines.
 
@@ -66,9 +66,9 @@ To configure common options, edit the ``/etc/kubernetes/config`` configuration f
     # Should this cluster be allowed to run privileged docker containers
     KUBE_ALLOW_PRIV="--allow-privileged=true"
     # How the controller-manager, scheduler, and proxy find the apiserver
-    KUBE_MASTER="--master=http://kubem00:8080"
+    KUBE_MASTER="--master=http://kube00:8080"
     # Comma separated list of nodes running etcd cluster
-    KUBE_ETCD_SERVERS="--etcd_servers=http://kubem00:2379"
+    KUBE_ETCD_SERVERS="--etcd_servers=http://kube00:2379"
 
 Kubernetes uses certificates to authenticate API request. We need to generate certificates that can be used for authentication. Kubernetes provides ready made scripts for generating these certificates which can be found [here](https://github.com/kalise/Kubernetes-Lab-Tutorial/tree/master/utils/ca-cert.sh).
 
@@ -98,7 +98,7 @@ To configure the API server, edit the ``/etc/kubernetes/apiserver`` configuratio
     # Port minions listen on
     KUBELET_PORT="--kubelet-port=10250"
     # Comma separated list of nodes in the etcd cluster
-    KUBE_ETCD_SERVERS="--etcd-servers=http://kubem00:2379"
+    KUBE_ETCD_SERVERS="--etcd-servers=http://kube00:2379"
     # Address range to use for services
     KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range=10.254.0.0/16"
     # default admission control policies
@@ -141,7 +141,7 @@ Configure the flanneld service by editing the ``/etc/sysconfig/flanneld`` config
 
     # Flanneld configuration options
     # etcd url location.  Point this to the server where etcd runs
-    FLANNEL_ETCD_ENDPOINTS="http://10.10.10.80:2379"
+    FLANNEL_ETCD_ENDPOINTS="http://kube00:2379"
     # etcd config key.  This is the configuration key that flannel queries
     # For address range assignment
     FLANNEL_ETCD_PREFIX="/kube-centos/network"
@@ -185,7 +185,7 @@ To configure common options, edit the ``/etc/kubernetes/config`` configuration f
     # Should this cluster be allowed to run privileged docker containers
     KUBE_ALLOW_PRIV="--allow-privileged=true"
     # How the controller-manager, scheduler, and proxy find the apiserver
-    KUBE_MASTER="--master=http://kubem00:8080"
+    KUBE_MASTER="--master=http://kube00:8080"
     # Comma separated list of nodes running etcd cluster
     #KUBE_ETCD_SERVERS="--etcd_servers=http://127.0.0.1:2379"
 
@@ -199,7 +199,7 @@ To configure the kubelet component, edit the ``/etc/kubernetes/kubelet`` configu
     # You may leave this blank to use the actual hostname
     KUBELET_HOSTNAME="--hostname-override=<kube-node-name>"
     # location of the api-server
-    KUBELET_API_SERVER="--api-servers=http://kubem00:8080"
+    KUBELET_API_SERVER="--api-servers=http://kube00:8080"
     # pod infrastructure container
     KUBELET_POD_INFRA_CONTAINER="--pod-infra-container-image=registry.access.redhat.com/rhel7/pod-infrastructure:latest"
     # Add your own!
@@ -227,7 +227,7 @@ Configure flannel to overlay network in /etc/sysconfig/flanneld
 
     # Flanneld configuration options
     # etcd url location.  Point this to the server where etcd runs
-    FLANNEL_ETCD_ENDPOINTS="http://kubem00:2379"
+    FLANNEL_ETCD_ENDPOINTS="http://kube00:2379"
     # etcd config key.  This is the configuration key that flannel queries
     # For address range assignment
     FLANNEL_ETCD_PREFIX="/kube-centos/network"
@@ -260,13 +260,13 @@ The cluster should be now running. Check to make sure the cluster can see the no
 
     kubectl get nodes
     NAME      STATUS    AGE
-    kuben01   Ready     2d
-    kuben02   Ready     2d
-    kuben03   Ready     2d
+    kube01   Ready     2d
+    kube02   Ready     2d
+    kube03   Ready     2d
 
 Kubernetes cluster stores all of its internal state in etcd. The idea is, that you should interact with Kubernetes only via its API provided by API service. API service abstracts away all the Kubernetes cluster state manipulating by reading from and writing into the etcd cluster. Let’s explore what’s stored in the etcd cluster after fresh installation:
 
-    [root@kubem00 ~]# etcdctl ls
+    [root@kube00 ~]# etcdctl ls
     /kube-centos
     /registry
 
@@ -274,7 +274,7 @@ The etcd has the /registry area where stores all info related to the cluster. Th
 
 Let's see the cluster info stored in etcd
 
-    [root@kubem00 ~]# etcdctl ls /registry --recursive
+    [root@kube00 ~]# etcdctl ls /registry --recursive
     /registry/deployments
     /registry/deployments/default
     /registry/deployments/kube-system
@@ -292,32 +292,32 @@ Let's see the cluster info stored in etcd
 For example, get detailed info about a worker node
 
     [root@kubem00 ~]# etcdctl ls /registry/minions
-    /registry/minions/kuben01
-    /registry/minions/kuben02
-    /registry/minions/kuben03
+    /registry/minions/kube01
+    /registry/minions/kube02
+    /registry/minions/kube03
     
-    [root@kubem00 ~]# etcdctl get /registry/minions/kuben01 | jq .
+    [root@kubem00 ~]# etcdctl get /registry/minions/kube01 | jq .
 
 ```json
     {
       "kind": "Node",
       "apiVersion": "v1",
       "metadata": {
-        "name": "kuben01",
-        "selfLink": "/api/v1/nodeskuben01",
+        "name": "kube01",
+        "selfLink": "/api/v1/nodeskube01",
         "uid": "e4ad4619-17d6-11e7-acd7-000c29f8a512",
         "creationTimestamp": "2017-04-02T19:02:18Z",
         "labels": {
           "beta.kubernetes.io/arch": "amd64",
           "beta.kubernetes.io/os": "linux",
-          "kubernetes.io/hostname": "kuben01"
+          "kubernetes.io/hostname": "kube01"
         },
         "annotations": {
           "volumes.kubernetes.io/controller-managed-attach-detach": "true"
         }
       },
       "spec": {
-        "externalID": "kuben01"
+        "externalID": "kube01"
       },
       "status": {
         "capacity": {
@@ -398,13 +398,13 @@ Note: make sure you have updated in the above file the correct cluster IP ``10.2
 
 Create the DNS for service discovery
 
-    [root@kubem00 ~]# kubectl create -f kubedns-template.yaml
+    [root@kube00 ~]# kubectl create -f kubedns-template.yaml
     replicationcontroller "kube-dns-v20" created
     service "kube-dns" created
 
 and check if it works in the dedicated namespace
 
-    [root@kubem00 ~]# kubectl get all -n kube-system
+    [root@kube00 ~]# kubectl get all -n kube-system
     NAME              DESIRED   CURRENT   READY     AGE
     rc/kube-dns-v20   1         1         1         22m
     NAME           CLUSTER-IP     EXTERNAL-IP   PORT(S)         AGE
