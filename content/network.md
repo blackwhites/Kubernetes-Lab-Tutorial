@@ -1,13 +1,9 @@
 # Cluster Networking
 Kubernetes assumes that pods can communicate with other pods in the cluster, no matter of which host they land on. In a kubernetes cluster, every pod has its own IP address, so the cluster administrator does not need to create links between pods and never needs to deal with mapping container address to host address.
 
-Kubernetes network model requires that the container address ranges should be routable. This is different from the default docker network model that provides a docker bridge with IP address in a given default subnet. In the default Docker model, each container will get an IP address in that subnet and uses the docker  bridge IP as it’s default gateway.
+Kubernetes network model, based on **CNI**, Container Networking Interface, requires that the container address ranges should be routable. This is different from the default docker network model that provides a docker bridge with IP address in a given default subnet. In the default Docker model, each container will get an IP address in that subnet and uses the docker  bridge IP as it’s default gateway.
 
-Kubernetes creates a cleaner model where pods can be treated much like virtual machines or physical hosts from the perspectives of addressing, naming, service discovery and load balancing. There are many ways to implement kubernetes networking model. In this tutorial we are using **Flannel**, a simple overlay networking daemon for kubernetes. Flannel is very simple to setup and use. Flannel gives a dedicated subnet to each docker bridge. Details about Flannel are [here](https://github.com/coreos/flannel).
-
-After configuring Flannel daemon, the hosts get addresses for docker bridge:
-
-![](../img/flannel.png?raw=true)
+Kubernetes creates a cleaner model where pods can be treated much like virtual machines or physical hosts from the perspectives of addressing, naming, service discovery and load balancing. There are many ways to implement kubernetes networking model, including L2 and L3 approaches. In this tutorial we are not using the overlay networking daemon for kubernetes. Inseatd, we're using a pure L3 solution based on the static routing table. However, this approach is not suitable for production envinronments. It is used only with learning scope.
 
 In the following sections we're going into a walk-through in kubernetes networking
 
@@ -17,7 +13,7 @@ In the following sections we're going into a walk-through in kubernetes networki
    * [Accessing services](#accessing-services)
 
 ## Pod Networking
-In a kubernetes cluster, when a pod is deployed, it gets an IP address from the docker bridge in the flannel overlay network.
+In a kubernetes cluster, when a pod is deployed, it gets an IP address from the cluster IP addresse range defined in the inital setup.
 
 Starting form the ``nginx-pod1.yaml`` file
 ```yaml
