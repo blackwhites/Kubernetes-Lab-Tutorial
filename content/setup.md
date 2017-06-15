@@ -26,11 +26,13 @@ In this tutorial we are not going to provision any overlay networks and instead 
       net.ipv4.ip_forward = 1
     sysctl -p /etc/sysctl.conf
 
-The IP address space will be allocated from the ``10.38.0.0/16`` claster range assigned to each Kubernetes worker through the node registration process. Based on the above configuration each node will receive a 24-bit subnet
+The IP address space for containers will be allocated from the ``10.38.0.0/16`` claster range assigned to each Kubernetes worker through the node registration process. Based on the above configuration each node will receive a 24-bit subnet
 
     10.38.0.0/24
     10.38.1.0/24
     10.38.2.0/24
+
+In addition, Kubernetes allocates IP addresses for internal services. These addresses are not required to be routable outside the cluster itself. In this lab we're going to use the ``10.32.0.0/16`` range for internal services.
 
 Here the releases we'll use during this tutorial
 
@@ -39,46 +41,51 @@ Here the releases we'll use during this tutorial
    * Etcd 3.1.7
 
 ## Configure Masters
-On the Master, first install etcd, kubernetes and flanneld
+On the Master, first install etcd and kubernetes
 
-    yum -y install --enablerepo=virt7-docker-common-release kubernetes etcd flannel
+    yum -y install kubernetes etcd
 
 ### Configure etcd
-Before launching and enabling the etcd service you need to define its configuration in ``/etc/etcd/etcd.conf``. The file contains several lines. You need to make sure the following are uncommented and setted as shown below.
+Before launching and enabling the etcd service you need to set options in the ``/usr/lib/systemd/system/etcd.service`` startup file
 
-    # [member]
-    ETCD_NAME=default
-    ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-    ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
-    # [cluster]
-    ETCD_ADVERTISE_CLIENT_URLS="http://0.0.0.0:2379"
-    # [logging]
-    ETCD_DEBUG="true"
+    [Unit]
+    Description=Etcd Server
+    After=network.target
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=notify
+    WorkingDirectory=/var/lib/etcd/
+    User=etcd
+    ExecStart=/usr/bin/etcd \
+       --name kube00 \
+       --data-dir=/var/lib/etcd \
+       --listen-client-urls http://10.10.10.80:2379,http://127.0.0.1:2379 \
+       --advertise-client-urls http://10.10.10.80:2379 \
+       --debug=false
+
+    Restart=on-failure
+    LimitNOFILE=65536
+
+    [Install]
+    WantedBy=multi-user.target
+
 
 Start and enable the service
 
+    systemctl daemon-reload
     systemctl start etcd
     systemctl enable etcd
-    systemctl status etcd
+    systemctl status etcd -l
 
-### Configure common Kubernetes
-To configure common options, edit the ``/etc/kubernetes/config`` configuration file
-
-    KUBE_LOGTOSTDERR="--logtostderr=true"
-    KUBE_LOG_LEVEL="--v=0"
-    # Should this cluster be allowed to run privileged docker containers
-    KUBE_ALLOW_PRIV="--allow-privileged=true"
-    # How the controller-manager, scheduler, and proxy find the apiserver
-    KUBE_MASTER="--master=http://kube00:8080"
-    # Comma separated list of nodes running etcd cluster
-    KUBE_ETCD_SERVERS="--etcd_servers=http://kube00:2379"
-
+### Create certificates
 Kubernetes uses certificates to authenticate API request. We need to generate certificates that can be used for authentication. Kubernetes provides ready made scripts for generating these certificates which can be found [here](https://github.com/kalise/Kubernetes-Lab-Tutorial/tree/master/utils/ca-cert.sh).
 
 Download this script, set right permissions and exec as follow
 
     MASTER_IP=10.10.10.80
-    KUBE_SVC_IP=10.254.0.1
+    KUBE_SVC_IP=10.32.0.1
     bash ca-cert.sh "${MASTER_IP}" "IP:${MASTER_IP},IP:${KUBE_SVC_IP},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local"
 
 This script will create certificates in ``/srv/kubernetes/`` directory
@@ -92,171 +99,264 @@ This script will create certificates in ``/srv/kubernetes/`` directory
     -rw-rw---- 1 root kube 1704 Apr 19 18:36 server.key
 
 ### Configure API server
-To configure the API server, edit the ``/etc/kubernetes/apiserver`` configuration file
+To configure the API server, edit the ``/usr/lib/systemd/system/kube-apiserver.service`` startup file
 
-    # The address on the local server to listen to.
-    KUBE_API_ADDRESS="--address=0.0.0.0"
-    # The port on the local server to listen on.
-    KUBE_API_PORT="--port=8080"
-    # Port minions listen on
-    KUBELET_PORT="--kubelet-port=10250"
-    # Comma separated list of nodes in the etcd cluster
-    KUBE_ETCD_SERVERS="--etcd-servers=http://kube00:2379"
-    # Address range to use for services
-    KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range=10.254.0.0/16"
-    # default admission control policies
-    KUBE_ADMISSION_CONTROL="--admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota"
-    # Add your own!
-    KUBE_API_ARGS="--client-ca-file=/srv/kubernetes/ca.crt --tls-cert-file=/srv/kubernetes/server.cert --tls-private-key-file=/srv/kubernetes/server.key"
+    [Unit]
+    Description=Kubernetes API Server
+    Documentation=https://kubernetes.io/docs/admin/kube-apiserver/
+    After=network.target
+    After=etcd.service
+
+    [Service]
+    User=kube
+    ExecStart=/usr/bin/kube-apiserver \
+      --audit-log-path=/var/log/kubernetes/kube-apiserver-audit.log \
+      --allow-privileged=true \
+      --etcd-servers=http://10.10.10.80:2379 \
+      --bind-address=10.10.10.80 \
+      --secure-port=6443 \
+      --insecure-bind-address=10.10.10.80 \
+      --insecure-port=8080 \
+      --advertise-address=10.10.10.80 \
+      --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \
+      --service-cluster-ip-range=10.32.0.0/16 \
+      --service-node-port-range=30000-32767 \
+      --client-ca-file=/srv/kubernetes/ca.crt \
+      --tls-cert-file=/srv/kubernetes/server.cert \
+      --tls-private-key-file=/srv/kubernetes/server.key
+
+    Restart=on-failure
+    Type=notify
+    LimitNOFILE=65536
+
+    [Install]
+    WantedBy=multi-user.target
+
 
 Start and enable the service
 
+    systemctl daemon-reload
     systemctl start kube-apiserver
     systemctl enable kube-apiserver
     systemctl status kube-apiserver
 
 ### Configure controller manager
-To configure the kubernetes controller manager, edit the ``/etc/kubernetes/controller-manager`` configuration file
+To configure the kubernetes controller manager, edit the ``/usr/lib/systemd/system/kube-controller-manager.service`` startup file
 
-    # defaults from config and apiserver should be adequate
-    # Add your own!
-    KUBE_CONTROLLER_MANAGER_ARGS="--root-ca-file=/srv/kubernetes/ca.crt --service-account-private-key-file=/srv/kubernetes/server.key"
+    [Unit]
+    Description=Kubernetes Controller Manager
+    Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+
+    [Service]
+    User=kube
+    ExecStart=/usr/bin/kube-controller-manager \
+      --allocate-node-cidrs=true \
+      --cluster-cidr=10.38.0.0/16 \
+      --cluster-name=kubernetes \
+      --leader-elect=true \
+      --master=http://10.10.10.80:8080 \
+      --service-cluster-ip-range=10.32.0.0/16 \
+      --root-ca-file=/srv/kubernetes/ca.crt \
+      --service-account-private-key-file=/srv/kubernetes/server.key
+
+    Restart=on-failure
+    LimitNOFILE=65536
+
+    [Install]
+    WantedBy=multi-user.target
+
 
 Start and enable the service
 
+    systemctl daemon-reload
     systemctl start kube-controller-manager
     systemctl enable kube-controller-manager
     systemctl status kube-controller-manager
     
 ### Configure scheduler
-Usually, there are no needs to change default scheduler ``/etc/kubernetes/scheduler`` configuration file. For advanced options, please refer to the official documentation.
+To configure the kubernetes scheduler, edit the ``/usr/lib/systemd/system/kube-scheduler.service`` startup file
+
+    [Unit]
+    Description=Kubernetes Scheduler Plugin
+    Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+
+    [Service]
+    User=kube
+    ExecStart=/usr/bin/kube-scheduler \
+      --leader-elect=true \
+      --master=http://10.10.10.80:8080
+
+    Restart=on-failure
+    LimitNOFILE=65536
+
+    [Install]
+    WantedBy=multi-user.target
 
 Start and enable the service
 
+    systemctl daemon-reload
     systemctl start kube-scheduler
     systemctl enable kube-scheduler
     systemctl status kube-scheduler
-    
-### Configure Flannel
-Before moving away from the master we will create a configuration key in etcd defining the flannel network which will be used by the nodes.
-
-Configure the flanneld service by editing the ``/etc/sysconfig/flanneld`` configuration file
-
-    # Flanneld configuration options
-    # etcd url location.  Point this to the server where etcd runs
-    FLANNEL_ETCD_ENDPOINTS="http://kube00:2379"
-    # etcd config key.  This is the configuration key that flannel queries
-    # For address range assignment
-    FLANNEL_ETCD_PREFIX="/kube-centos/network"
-    # Any additional options that you want to pass
-    FLANNEL_OPTIONS=""
-
-In etcd, create a flannel network 
-
-    etcdctl mkdir /kube-centos/network
-    etcdctl mk /kube-centos/network/config "{ \"Network\": \"172.30.0.0/16\", \"SubnetLen\": 24, \"Backend\": { \"Type\": \"vxlan\" } }"
-
-Start and enable the flanneld service
-
-    systemctl start flanneld
-    systemctl enable flanneld
-    systemctl status flanneld
-
-To prevent docker main service starts before flanneld and then being not able to use flannel network, update the docker startup  ``/usr/lib/systemd/system/docker.service`` configuration file
-
-    [Unit]
-    ...
-    After=flanneld.service
-    Requires=flanneld.service
-    ...
-
-Restart the docker service
-
-    systemctl daemon-reload
-    systemctl restart docker
-    systemctl status docker
 
 ## Configure Workers
-On all the worker nodes, install the Kubernetes components and flanneld
+On all the worker nodes, install kubernetes and docker
 
-    yum -y install --enablerepo=virt7-docker-common-release kubernetes flannel
+    yum -y install kubernetes docker
 
-To configure common options, edit the ``/etc/kubernetes/config`` configuration file
+### Configure Docker
+There are a number of ways to customize the Docker daemon flags and environment variables. The recommended way from Docker web site is to use the platform-independent ``/etc/docker/daemon.json`` file instead of the systemd unit file. This file is available on all the Linux distributions
 
-    KUBE_LOGTOSTDERR="--logtostderr=true"
-    KUBE_LOG_LEVEL="--v=0"
-    # Should this cluster be allowed to run privileged docker containers
-    KUBE_ALLOW_PRIV="--allow-privileged=true"
-    # How the controller-manager, scheduler, and proxy find the apiserver
-    KUBE_MASTER="--master=http://kube00:8080"
-    # Comma separated list of nodes running etcd cluster
-    #KUBE_ETCD_SERVERS="--etcd_servers=http://127.0.0.1:2379"
+```json
+{
+ "debug": true,
+ "storage-driver": "devicemapper",
+ "iptables": false,
+ "ip-masq": false
+}
+```
+
+On CentOS systems, the suggested storage mapper is the Device Mapper.
+
+Also, since Kubernetes uses a different network model than Docker, we need to prevent Docker to use NAT/IP Table rewriting.
+
+Start and enable the docker service
+
+    systemctl start docker
+    systemctl enable docker
+    systemctl status docker
+
+As usual, Docker will create the default ``docker0`` bridge network interface
+
+    ifconfig docker0
+    docker0: flags=4099<UP,BROADCAST,MULTICAST>  mtu 1500
+            inet 172.17.0.1  netmask 255.255.0.0  broadcast 0.0.0.0
+            ether 02:42:c3:64:b4:7f  txqueuelen 0  (Ethernet)
+
+However, we're not going to use it since Kubernetes networking is based on the **CNI** Container Network Interface.
+
+### Setup the CNI network plugins
+Download the CNI network plugins from [here](https://github.com/kalise/Kubernetes-Lab-Tutorial/raw/master/cni-plugins/cni-amd64.tar.gz) and place them in the expected directory
+
+    mkdir -p /opt/cni
+    tar -xvf cni-amd64.tar.gz -C /opt/cni
 
 ### Configure kubelet
-To configure the kubelet component, edit the ``/etc/kubernetes/kubelet`` configuration file
+To configure the kubelet component, edit the ``/usr/lib/systemd/system/kubelet.service`` startup file
 
-    # The address for the info server to serve on
-    KUBELET_ADDRESS="--address=0.0.0.0"
-    # The port for the info server to serve on
-    KUBELET_PORT="--port=10250"
-    # You may leave this blank to use the actual hostname
-    KUBELET_HOSTNAME="--hostname-override=<kube-node-name>"
-    # location of the api-server
-    KUBELET_API_SERVER="--api-servers=http://kube00:8080"
-    # pod infrastructure container
-    KUBELET_POD_INFRA_CONTAINER="--pod-infra-container-image=registry.access.redhat.com/rhel7/pod-infrastructure:latest"
-    # Add your own!
-    KUBELET_ARGS="--cluster-dns=10.254.3.100 --cluster-domain=cluster.local"
+    [Unit]
+    Description=Kubernetes Kubelet Server
+    Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+    After=docker.service
+    Requires=docker.service
 
-The cluster DNS parameter above refers to the DNS internal service used by Kubernetes for service discovery. We're going to configure it below.
+    [Service]
+    WorkingDirectory=/var/lib/kubelet
+    ExecStart=/usr/bin/kubelet \
+      --network-plugin=kubenet \
+      --allow-privileged=true \
+      --api-servers=http://10.10.10.80:8080 \
+      --cluster-dns=10.32.0.10 \
+      --cluster-domain=cluster.local \
+      --container-runtime=docker \
+      --register-node=true
+
+    Restart=on-failure
+
+    [Install]
+    WantedBy=multi-user.target
+
+The cluster DNS parameter above refers to the IP of the DNS internal service used by Kubernetes for service discovery. It should be in the IP addressese space used for internal services. We're going to configure it soon.
 
 Start and enable the kubelet service
 
+    systemctl daemon-reload
     systemctl start kubelet
     systemctl enable kubelet
     systemctl status kubelet
 
 ### Configure proxy
-Usually, there are no needs to change default proxy ``/etc/kubernetes/proxy`` configuration file. For advanced options, please refer to the official documentation.
+To configure the proxy component, edit the ``/usr/lib/systemd/system/kube-proxy.service`` startup file
+
+    [Unit]
+    Description=Kubernetes Kube-Proxy Server
+    Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+    After=network.target
+
+    [Service]
+    ExecStart=/usr/bin/kube-proxy \
+      --master=http://10.10.10.80:8080 \
+      --cluster-cidr=10.38.0.0/16 \
+      --proxy-mode=iptables \
+      --masquerade-all=true
+
+    Restart=on-failure
+    LimitNOFILE=65536
+
+    [Install]
+    WantedBy=multi-user.target
 
 Start and enable the service
 
+    systemctl daemon-reload
     systemctl start kube-proxy
     systemctl enable kube-proxy
     systemctl status kube-proxy
 
-### Configure Flannel
-Configure flannel to overlay network in /etc/sysconfig/flanneld 
 
-    # Flanneld configuration options
-    # etcd url location.  Point this to the server where etcd runs
-    FLANNEL_ETCD_ENDPOINTS="http://kube00:2379"
-    # etcd config key.  This is the configuration key that flannel queries
-    # For address range assignment
-    FLANNEL_ETCD_PREFIX="/kube-centos/network"
-    # Any additional options that you want to pass
-    #FLANNEL_OPTIONS=""
+## Define the Container Network Routes
+Now that each worker node is online we need to add routes to make sure that containers running on different machines can talk to each other. The first thing we need to do is gather the information required to populate the nodes routing table.
 
-Start and enable the flanneld service
+On the master node, use kubectl to gather the IP addresses
 
-    systemctl start flanneld
-    systemctl enable flanneld
-    systemctl status flanneld
+    kubectl get nodes \
+     -o jsonpath='{range .items[*]} {.spec.externalID} {.status.addresses[?(@.type=="InternalIP")].address} {.spec.podCIDR} {"\n"}{end}'
+    
+    kube01 10.10.10.81 10.38.0.0/24
+    kube02 10.10.10.82 10.38.1.0/24
+    kube03 10.10.10.83 10.38.2.0/24
 
-To prevent docker main service starts before flanneld and then being not able to use flannel network, update the docker startup  ``/usr/lib/systemd/system/docker.service`` configuration file
+On the master node, given ``ens160`` the cluster network interface, create the script file ``/etc/sysconfig/network-scripts/route-ens160`` for adding permanent static routes containing the following
 
-    [Unit]
-    ...
-    After=flanneld.service
-    Requires=flanneld.service
-    ...
+    10.38.0.0/24 via 10.10.10.81
+    10.38.1.0/24 via 10.10.10.82
+    10.38.2.0/24 via 10.10.10.83
 
-Restart the docker service
+Restart the network service and check the master routing table
 
-    systemctl daemon-reload
-    systemctl restart docker
-    systemctl status docker
+    systemctl restart network
+    
+    netstat -nr
+    Kernel IP routing table
+    Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
+    0.0.0.0         10.10.10.1      0.0.0.0         UG        0 0          0 ens160
+    10.10.10.0      0.0.0.0         255.255.255.0   U         0 0          0 ens160
+    10.38.0.0       10.10.10.81     255.255.255.0   UG        0 0          0 ens160
+    10.38.1.0       10.10.10.82     255.255.255.0   UG        0 0          0 ens160
+    10.38.2.0       10.10.10.83     255.255.255.0   UG        0 0          0 ens160
 
+On all the worker nodes, create a similar script file.
+
+For example, on the worker ``kube01``, create the file ``/etc/sysconfig/network-scripts/route-ens160`` containing the following
+
+    10.38.1.0/24 via 10.10.10.82
+    10.38.2.0/24 via 10.10.10.83
+
+Restart the network service and check the master routing table
+
+    systemctl restart network
+    
+    netstat -nr
+    Kernel IP routing table
+    Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
+    0.0.0.0         10.10.10.1      0.0.0.0         UG        0 0          0 ens160
+    10.10.10.0      0.0.0.0         255.255.255.0   U         0 0          0 ens160
+    10.38.0.0       0.0.0.0         255.255.255.0   U         0 0          0 cbr0
+    10.38.1.0       10.10.10.84     255.255.255.0   UG        0 0          0 ens160
+    10.38.2.0       10.10.10.85     255.255.255.0   UG        0 0          0 ens160
+    172.17.0.0      0.0.0.0         255.255.0.0     U         0 0          0 docker0
+
+Repeat the steps for all workers paying attention to set the routes correctly. Finally, check the nodes can reach each other on these IP addresses.
 
 ## Test the cluster
 The cluster should be now running. Check to make sure the cluster can see the node, by logging to the master
@@ -270,7 +370,6 @@ The cluster should be now running. Check to make sure the cluster can see the no
 Kubernetes cluster stores all of its internal state in etcd. The idea is, that you should interact with Kubernetes only via its API provided by API service. API service abstracts away all the Kubernetes cluster state manipulating by reading from and writing into the etcd cluster. Let’s explore what’s stored in the etcd cluster after fresh installation:
 
     [root@kube00 ~]# etcdctl ls
-    /kube-centos
     /registry
 
 The etcd has the /registry area where stores all info related to the cluster. The /kube-centos area contains the flannel network configuration.
@@ -301,55 +400,6 @@ For example, get detailed info about a worker node
     
     [root@kubem00 ~]# etcdctl get /registry/minions/kube01 | jq .
 
-```json
-    {
-      "kind": "Node",
-      "apiVersion": "v1",
-      "metadata": {
-        "name": "kube01",
-        "selfLink": "/api/v1/nodeskube01",
-        "uid": "e4ad4619-17d6-11e7-acd7-000c29f8a512",
-        "creationTimestamp": "2017-04-02T19:02:18Z",
-        "labels": {
-          "beta.kubernetes.io/arch": "amd64",
-          "beta.kubernetes.io/os": "linux",
-          "kubernetes.io/hostname": "kube01"
-        },
-        "annotations": {
-          "volumes.kubernetes.io/controller-managed-attach-detach": "true"
-        }
-      },
-      "spec": {
-        "externalID": "kube01"
-      },
-      "status": {
-        "capacity": {
-          "alpha.kubernetes.io/nvidia-gpu": "0",
-          "cpu": "1",
-          "memory": "1884128Ki",
-          "pods": "110"
-        },
-        "allocatable": {
-          "alpha.kubernetes.io/nvidia-gpu": "0",
-          "cpu": "1",
-          "memory": "1884128Ki",
-          "pods": "110"
-        },
-        "nodeInfo": {
-          "machineID": "3061393c3cc943959069e4b3dd4d1276",
-          "systemUUID": "564DBD0F-7CC4-E8CD-3882-0DDB6D9AB26E",
-          "bootID": "3f286a35-3ae9-4e41-a9f8-4beb6f42477e",
-          "kernelVersion": "3.10.0-514.10.2.el7.x86_64",
-          "osImage": "CentOS Linux 7 (Core)",
-          "containerRuntimeVersion": "docker://1.12.6",
-          "kubeletVersion": "v1.5.2",
-          "kubeProxyVersion": "v1.5.2",
-          "operatingSystem": "linux",
-          "architecture": "amd64"
-        }
-      }
-    }
-```
 
 ## Configure DNS service
 To enable service name discovery in our Kubernetes cluster, we need to configure an embedded DNS service. To do so, we need to deploy DNS pod and service having configured kubelet to resolve all DNS queries from this local DNS service.
