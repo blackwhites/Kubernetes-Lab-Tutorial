@@ -13,10 +13,10 @@ Our initial cluster will be made of 1 Master node and 3 Workers nodes. All machi
 
 Here the hostnames:
 
-    kube00 10.10.10.80 (master)
-    kube01 10.10.10.81 (worker)
-    kube02 10.10.10.82 (worker)
-    kube03 10.10.10.82 (worker)
+   * kube00 10.10.10.80 (master)
+   * kube01 10.10.10.81 (worker)
+   * kube02 10.10.10.82 (worker)
+   * kube03 10.10.10.82 (worker)
 
 Make sure to enable DNS resolution for the above hostnames or set the ``/etc/hosts`` file on all the machines.
 
@@ -34,9 +34,9 @@ The IP address space will be allocated from the ``10.38.0.0/16`` claster range a
 
 Here the releases we'll use during this tutorial
 
-    *. Kubernetes 1.5.2
-    *. Docker 1.12.6
-    *. Etcd 3.1.7
+   * Kubernetes 1.5.2
+   * Docker 1.12.6
+   * Etcd 3.1.7
 
 ## Configure Masters
 On the Master, first install etcd, kubernetes and flanneld
