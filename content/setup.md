@@ -20,20 +20,23 @@ Here the hostnames:
 
 Make sure to enable DNS resolution for the above hostnames or set the ``/etc/hosts`` file on all the machines.
 
-For networking we are going to use **Flannel**, a simple overlay networking daemon for kubernetes. There are many networking solutions available out there. Flannel is very simple to setup and use. Flannel gives a dedicated subnet to each host for use with container runtimes. Details about Flannel are [here](https://github.com/coreos/flannel).
-
-Make sure IP forwarding kernel option is enabled
+In this tutorial we are not going to provision any overlay networks and instead rely on Layer 3 networking between machines. That means we need to add routes to our hosts. Make sure IP forwarding kernel option is enabled on all hosts
 
     cat /etc/sysctl.conf
       net.ipv4.ip_forward = 1
     sysctl -p /etc/sysctl.conf
 
-Create default kubernetes reposistory on all the nodes:
+The IP address space will be allocated from the ``10.38.0.0/16`` claster range assigned to each Kubernetes worker through the node registration process. Based on the above configuration each node will receive a 24-bit subnet
 
-    [virt7-docker-common-release]
-    name=virt-docker-common-release
-    baseurl=http://cbs.centos.org/repos/virt7-docker-common-release/x86_64/os/
-    gpgcheck=0
+    10.38.0.0/24
+    10.38.1.0/24
+    10.38.2.0/24
+
+Here the releases we'll use during this tutorial
+
+    *. Kubernetes 1.5.2
+    *. Docker 1.12.6
+    *. Etcd 3.1.7
 
 ## Configure Masters
 On the Master, first install etcd, kubernetes and flanneld
