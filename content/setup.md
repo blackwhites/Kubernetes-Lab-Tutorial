@@ -72,7 +72,6 @@ Before launching and enabling the etcd service you need to set options in the ``
     [Install]
     WantedBy=multi-user.target
 
-
 Start and enable the service
 
     systemctl daemon-reload
@@ -116,7 +115,7 @@ To configure the API server, edit the ``/usr/lib/systemd/system/kube-apiserver.s
     ExecStart=/usr/bin/kube-apiserver \
       --audit-log-path=/var/log/kubernetes/kube-apiserver-audit.log \
       --allow-privileged=true \
-      --etcd-servers=http://10.10.10.80:2379 \
+      --etcd-servers=http://127.0.0.1:2379 \
       --bind-address=10.10.10.80 \
       --secure-port=6443 \
       --insecure-bind-address=10.10.10.80 \
@@ -135,7 +134,6 @@ To configure the API server, edit the ``/usr/lib/systemd/system/kube-apiserver.s
 
     [Install]
     WantedBy=multi-user.target
-
 
 Start and enable the service
 
@@ -169,7 +167,6 @@ To configure the kubernetes controller manager, edit the ``/usr/lib/systemd/syst
     [Install]
     WantedBy=multi-user.target
 
-
 Start and enable the service
 
     systemctl daemon-reload
@@ -202,6 +199,42 @@ Start and enable the service
     systemctl start kube-scheduler
     systemctl enable kube-scheduler
     systemctl status kube-scheduler
+
+### Configure CLI
+On the master node, configure the ``kubectl`` command line. Please not it is not required to enable kubectl on the master node. It can be installed and configured on any machine that is able to reach the API Server.
+
+The kubectl need a context hidden file called ``~.kube/conf``. The contest defines the namespace as well as the cluster and the user accessing the resources.
+
+Create an hidden file with the following content
+
+    apiVersion: v1
+    clusters:
+    - cluster:
+        server: http://kube00:8080
+      name: kubernetes
+    contexts:
+    - context:
+        cluster: kubernetes
+        user: admin
+      name: default/kubernetes/admin
+    current-context: default/kubernetes/admin
+    kind: Config
+    preferences: {}
+    users:
+    - name: admin
+      user: {}
+
+then enable the context
+
+    kubectl config use-context default/kubernetes/admin
+
+Now it is possible to query and operate with the cluster
+
+    kubectl get componentstatuses
+    NAME                 STATUS    MESSAGE              ERROR
+    scheduler            Healthy   ok
+    controller-manager   Healthy   ok
+    etcd-0               Healthy   {"health": "true"}
 
 ## Configure Workers
 On all the worker nodes, install kubernetes and docker
