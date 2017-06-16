@@ -9,6 +9,7 @@
     * [Scheduler](./content/architecture.md#scheduler)
     * [Agent](./content/architecture.md#agent)
     * [Proxy](./content/architecture.md#proxy)
+    * [CLI](./content/architecture.md#command-line-client)
 
 2. [Setup](./content/setup.md)
     * [Requirements](./content/setup.md#requirements)
