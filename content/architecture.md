@@ -31,7 +31,7 @@ It requires port 2380 for listening peers requests and port 2379 for clients req
 The kube-apiserver exposes the Kubernetes API in a REST fashion. It is the front-end for the Kubernetes control plane. Both the humans and machines users interact with the system via the API Server component.
 
 It runs on the master(s).
-It binds on port 6443 for secure communications and port 8080 for insecure.
+It binds on port 6443 for listening secure communications and port 8080 for the insecure.
 
 ## Controller Manager
 The kube-controller-manager is a binary that runs controllers, which are the background threads that handle routine tasks in the cluster. These controllers include:
@@ -42,9 +42,10 @@ The kube-controller-manager is a binary that runs controllers, which are the bac
   * Service Account & Token Controllers: Create default accounts and API access tokens for new namespaces
 
 It runs on the master(s).
+It binds on port 10252.
 
 ## Scheduler
-The kube-scheduler watches newly created pods that have no node assigned, and selects a node for them to run on. It runs on the master(s).
+The kube-scheduler watches newly created pods that have no node assigned, and selects a node for them to run on. It runs on the master(s). It binds on port 10251
 
 ## Agent
 The kubelet is the primary node agent. Its main responsibilities are:
@@ -55,8 +56,8 @@ The kubelet is the primary node agent. Its main responsibilities are:
   * Periodically executes container liveness probes
   * Reports the status of the pod back to the rest of the system
 
-The kubelet runs on the workers.
+The kubelet runs on the workers. It binds on ports 10250 and 10255.
 
 ## Proxy
-The kube-proxy component enables the Kubernetes service abstraction by maintaining network rules on the host and performing connection forwarding. It runs on the workers.
+The kube-proxy component enables the Kubernetes service abstraction by maintaining network rules on the host and performing connection forwarding. It runs on the workers. It binds on port 31080.
 
