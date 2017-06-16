@@ -137,6 +137,14 @@ To configure the API server, edit the ``/usr/lib/systemd/system/kube-apiserver.s
     [Install]
     WantedBy=multi-user.target
 
+The API Server will log all requests into the ``/var/log/kubernetes`` directory. Make sure this dir exists and have the right permissions
+
+    mkdir /var/log/kubernetes
+    chown -R kube:kube /var/log/kubernetes
+
+    ll /var/log/kubernetes
+    -rw-r--r-- 1 kube kube 8076 Jun 16 12:53 kube-apiserver-audit.log
+
 Start and enable the service
 
     systemctl daemon-reload
