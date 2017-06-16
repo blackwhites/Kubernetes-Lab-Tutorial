@@ -213,30 +213,26 @@ Start and enable the service
 ### Configure CLI
 On the master node, configure the ``kubectl`` command line. Please not it is not required to enable kubectl on the master node. It can be installed and configured on any machine that is able to reach the API Server.
 
-The kubectl need a context hidden file called ``~.kube/conf``. The contest defines the namespace as well as the cluster and the user accessing the resources.
+The contest defines the namespace as well as the cluster and the user accessing the resources.
 
-Create an hidden file with the following content
+Create a context for default admin access to the cluster
 
-    apiVersion: v1
-    clusters:
-    - cluster:
-        server: http://kube00:8080
-      name: kubernetes
-    contexts:
-    - context:
-        cluster: kubernetes
-        user: admin
-      name: default/kubernetes/admin
-    current-context: default/kubernetes/admin
-    kind: Config
-    preferences: {}
-    users:
-    - name: admin
-      user: {}
+    kubectl config set-credentials admin
+    User "admin" set.
+
+    kubectl config set-cluster kubernetes --server=http://10.10.10.90:8080
+    Cluster "kubernetes" set.
+
+    kubectl config set-context default/kubernetes/admin --cluster=kubernetes --user=admin
+    Context "default/kubernetes/admin" set.
+
+    kubectl config set contexts.default/kubernetes/admin.namespace default
+    Property "contexts.default/kubernetes/admin.namespace" set.
 
 then enable the context
 
     kubectl config use-context default/kubernetes/admin
+    Switched to context "default/kubernetes/admin".
 
 Now it is possible to query and operate with the cluster
 
@@ -245,6 +241,26 @@ Now it is possible to query and operate with the cluster
     scheduler            Healthy   ok
     controller-manager   Healthy   ok
     etcd-0               Healthy   {"health": "true"}
+
+It is possible to define more contexts and switch between different contexts with different scopes and priviledges. The contexts are stored in the hidden file ``.kube/conf`` under the user home directory
+
+    apiVersion: v1
+    clusters:
+    - cluster:
+        server: http://10.10.10.90:8080
+      name: kubernetes
+    contexts:
+    - context:
+        cluster: kubernetes
+        namespace: default
+        user: admin
+      name: default/kubernetes/admin
+    current-context: default/kubernetes/admin
+    kind: Config
+    preferences: {}
+    users:
+    - name: admin
+      user: {}
 
 ## Configure Workers
 On all the worker nodes, install kubernetes and docker
