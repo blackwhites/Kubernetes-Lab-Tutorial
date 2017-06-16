@@ -61,3 +61,6 @@ The kubelet runs on the workers. It binds on ports 10250 and 10255.
 ## Proxy
 The kube-proxy component enables the Kubernetes service abstraction by maintaining network rules on the host and performing connection forwarding. It runs on the workers. It binds on port 31080.
 
+## Command line client
+The kubectl is the command line interface the humans use to interact with a Kubernetes cluster. It connect to the API Server and provides a power interface. The kubectl CLI can run on any machine is able to reach the API Server.
+
