@@ -9,7 +9,7 @@ This tutorial refers to a cluster of nodes (virtual, physical or a mix of both) 
    * [Configure GUI dashboard](#configure-gui-dashboard)
    
 ## Requirements
-Our initial cluster will be made of 1 Master node and 3 Workers nodes. All machines can be virtual or physical or a mix of both. Minimum hardware requirements are: 2 vCPUs, 2GB of RAM, 16GB HDD for OS and 16GB HDD for Docker volumes. All machines will be installed with Linux CentOS 7.3. Firewall and Selinux will be disabled. An NTP server is installed and running on all machines. Docker is installed with a Device Mapper on a separate HDD. Internet access.
+Our initial cluster will be made of 1 Master node and 3 Workers nodes. All machines can be virtual or physical or a mix of both. Minimum hardware requirements are: 2 vCPUs, 2GB of RAM, 16GB HDD for OS. All machines will be installed with Linux CentOS 7.3. Firewall and Selinux will be disabled. An NTP server is installed and running on all machines. Docker is installed with a Device Mapper on a separate 1GB HDD. Internet access.
 
 Here the hostnames:
 
@@ -26,7 +26,7 @@ In this tutorial we are not going to provision any overlay networks and instead 
       net.ipv4.ip_forward = 1
     sysctl -p /etc/sysctl.conf
 
-The IP address space for containers will be allocated from the ``10.38.0.0/16`` claster range assigned to each Kubernetes worker through the node registration process. Based on the above configuration each node will receive a 24-bit subnet
+The IP address space for containers will be allocated from the ``10.38.0.0/16`` cluster range assigned to each Kubernetes worker through the node registration process. Based on the above configuration each node will receive a 24-bit subnet
 
     10.38.0.0/24
     10.38.1.0/24
@@ -82,10 +82,13 @@ Start and enable the service
 ### Create certificates
 Kubernetes uses certificates to authenticate API request. We need to generate certificates that can be used for authentication. Kubernetes provides ready made scripts for generating these certificates which can be found [here](https://github.com/kalise/Kubernetes-Lab-Tutorial/tree/master/utils/ca-cert.sh).
 
-Download this script, set right permissions and exec as follow
+Set the master IP address and the Kubernetes internal service IP address
 
     MASTER_IP=10.10.10.80
     KUBE_SVC_IP=10.32.0.1
+
+Run the script
+
     bash ca-cert.sh "${MASTER_IP}" "IP:${MASTER_IP},IP:${KUBE_SVC_IP},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.cluster.local"
 
 This script will create certificates in ``/srv/kubernetes/`` directory
@@ -218,7 +221,7 @@ There are a number of ways to customize the Docker daemon flags and environment 
 
 On CentOS systems, the suggested storage mapper is the Device Mapper.
 
-Also, since Kubernetes uses a different network model than Docker, we need to prevent Docker to use NAT/IP Table rewriting.
+Also, since Kubernetes uses a different network model than Docker, we need to prevent Docker to use NAT/IP Table rewriting. For this reason, we disable the IP Table and NAT options in Docker daemon.
 
 Start and enable the docker service
 
