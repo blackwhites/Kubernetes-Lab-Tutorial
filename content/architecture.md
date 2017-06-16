@@ -20,6 +20,7 @@ Main components of a Kubernetes cluster are:
    * [Scheduler](#scheduler)
    * [Agent](#agent)
    * [Proxy](#proxy)
+   * [CLI](#command-line-client)
     
 ## etcd
 The etcd component is a distributed key/value database using the Raft consensus alghoritm. It is used as Kubernetes’ backing store. All cluster data is stored here.
