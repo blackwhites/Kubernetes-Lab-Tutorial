@@ -101,6 +101,8 @@ This script will create certificates in ``/srv/kubernetes/`` directory
     -rw-rw---- 1 root kube 4868 Apr 19 18:36 server.cert
     -rw-rw---- 1 root kube 1704 Apr 19 18:36 server.key
 
+Make sure file permissions and owners are correct.
+
 ### Configure API server
 To configure the API server, edit the ``/usr/lib/systemd/system/kube-apiserver.service`` startup file
 
