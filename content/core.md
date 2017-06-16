@@ -763,7 +763,7 @@ See the kubeconfig file use the ``kubectl config view`` command
   apiVersion: v1
     clusters:
     - cluster:
-        server: http://kubem00:8080
+        server: http://kube00:8080
       name: musa-cluster
     contexts:
     - context:
@@ -784,20 +784,16 @@ The file above defines a default-context operating on the musa-cluster as admin 
 Create a new contest using the projectone namespace we defined above
 
     kubectl config set-credentials admin
-    User "admin" set.
-    kubectl config set-cluster musa-cluster --server=http://kubem04:8080
-    Cluster "musa-cluster" set.
+    kubectl config set-cluster musa-cluster --server=http://kube00:8080
     kubectl config set-context projectone/musa-cluster/admin --cluster=musa-cluster --user=admin
-    Context "projectone/musa-cluster/admin" set.
     kubectl config set contexts.projectone/musa-cluster/admin.namespace projectone
-    Property "contexts.projectone/musa-cluster/admin.namespace" set.
 
 The kubeconfig file now looks like
 ```yaml
 apiVersion: v1
 clusters:
 - cluster:
-    server: http://kubem04:8080
+    server: http://kube00:8080
   name: musa-cluster
 contexts:
 - context:
