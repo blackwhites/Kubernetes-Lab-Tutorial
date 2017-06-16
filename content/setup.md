@@ -63,6 +63,7 @@ Before launching and enabling the etcd service you need to set options in the ``
        --data-dir=/var/lib/etcd \
        --listen-client-urls http://10.10.10.80:2379,http://127.0.0.1:2379 \
        --advertise-client-urls http://10.10.10.80:2379 \
+       --listen-peer-urls http://10.10.10.80:2380 \
        --debug=false
 
     Restart=on-failure
