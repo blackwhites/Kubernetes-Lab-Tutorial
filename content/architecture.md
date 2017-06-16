@@ -22,10 +22,16 @@ Main components of a Kubernetes cluster are:
    * [Proxy](#proxy)
     
 ## etcd
-The etcd component is a distributed key/value database using the Raft consensus alghoritm. It is used as Kubernetes’ backing store. All cluster data is stored here. It runs on the master(s).
+The etcd component is a distributed key/value database using the Raft consensus alghoritm. It is used as Kubernetes’ backing store. All cluster data is stored here.
+
+It runs on the master(s).
+It requires port 2380 for listening peers requests and port 2379 for clients requests.
 
 ## API Server
-The kube-apiserver exposes the Kubernetes API in a REST fashion. It is the front-end for the Kubernetes control plane. Both the humans and automatic users interact with the system via the API Server component. It runs on the master(s).
+The kube-apiserver exposes the Kubernetes API in a REST fashion. It is the front-end for the Kubernetes control plane. Both the humans and machines users interact with the system via the API Server component.
+
+It runs on the master(s).
+It binds on port 6443 for secure communications and port 8080 for insecure.
 
 ## Controller Manager
 The kube-controller-manager is a binary that runs controllers, which are the background threads that handle routine tasks in the cluster. These controllers include:
